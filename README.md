@@ -48,7 +48,7 @@ services:
     container_name: port_scanner
     volumes:
       - ./scanner:/scanner
-      - /var/log/docker-internal-network-scan/:/scanner/results
+      - /var/log/net-delta-monitor/:/scanner/results
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     environment:
