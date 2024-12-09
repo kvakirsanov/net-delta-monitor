@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  port_scanner:
+    build: .
+    container_name: port_scanner
+    volumes:
+      # Mount the local scanner code directory into the container at /scanner
+      - ./scanner:/scanner
+      # Mount a host directory to store scanner results (logs and reports)
+      - /var/log/net-delta-monitor/:/scanner/results
+      # Synchronize container timezone with the host system
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      # Set the scanning interval in seconds
+      - INTERVAL=10
+      # MQTT broker hostname or container name if in the same compose network
+      - MQTT_BROKER=mosquitto
+      # MQTT broker port
+      - MQTT_PORT=1883
+      # MQTT topic prefix
+      - MQTT_TOPIC_PREFIX=network-scanner
+      # Optional Telegram Bot settings
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+    networks:
+      - default
+    restart: always
+
+networks:
+  default:
+    driver: bridge
