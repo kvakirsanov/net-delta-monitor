@@ -17,7 +17,7 @@ INTERVAL = int(os.getenv("INTERVAL", 60))
 USE_MQTT = os.getenv("USE_MQTT", "false").lower() == "true"
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mosquitto")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "port_scanner")
+MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "network-scanner")
 
 BASE_DIR = "./results"
 NETWORK_STATE_FILENAME = "network.json"
