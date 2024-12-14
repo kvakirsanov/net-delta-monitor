@@ -81,26 +81,60 @@ def publish_mqtt(topic: str, message: Dict[str, Any]) -> None:
     log(f"Published to {topic}: {json.dumps(message, indent=4, ensure_ascii=False)}")
 
 
-# --- Scanning logic ---
-def quick_scan(subnet: str) -> List[str]:
+def quick_scan(subnet: str) -> List[Dict[str, str]]:
     """
-    Performs a quick subnet scan (ICMP ping sweep) to identify active hosts.
-    
+    Performs a quick subnet scan (ICMP ping sweep) to identify active hosts and retrieve their MAC addresses and vendors.
+
     Args:
-        subnet (str): Subnet to scan, e.g. '192.168.0.0/24'.
+        subnet (str): Subnet to scan, e.g., '192.168.0.0/24'.
 
     Returns:
-        List[str]: List of active hosts.
+        List[Dict[str, str]]: List of active hosts with their IP, MAC addresses, and vendors.
     """
     command = ["nmap", "-sn", subnet]
     result = run_command(command)
 
-    live_hosts = [
-        line.split(" ")[-1].strip()
-        for line in result.stdout.splitlines()
-        if "Nmap scan report for" in line
-    ]
+    live_hosts = []
+    current_ip = None  # To keep track of the current IP address in the scan
 
+    for line in result.stdout.splitlines():
+
+        # Parse IP address from the normal report format
+        if "Nmap scan report for" in line:
+            # Check if the line contains both hostname and IP in parentheses
+            ip_match = re.search(r"\((\d+\.\d+\.\d+\.\d+)\)", line)
+            if ip_match:
+                current_ip = ip_match.group(1).strip()
+            else:
+                # Otherwise, extract the last part of the line as the IP
+                current_ip = line.split(" ")[-1].strip()
+
+            live_hosts.append({"ip": current_ip, "mac": "unknown", "vendor": "unknown"})  # Add host with placeholders
+
+        # Parse MAC address and vendor
+        elif "MAC Address" in line and current_ip:
+            mac_match = re.search(r"MAC Address: ([0-9A-F:]+) \((.+)\)", line)
+            if mac_match:
+                mac_address = mac_match.group(1).strip()
+                vendor = mac_match.group(2).strip()
+
+                # Update the last added host's MAC and vendor
+                for host in live_hosts:
+                    if host["ip"] == current_ip:
+                        host["mac"] = mac_address
+                        host["vendor"] = vendor
+                        break
+
+    # Ensure MAC address is updated for the scanning host (if it's detected)
+    for host in live_hosts:
+        if host["ip"] == current_ip and host["mac"] == "unknown":
+            for line in result.stdout.splitlines():
+                if "MAC Address" in line:
+                    mac_match = re.search(r"MAC Address: ([0-9A-F:]+) \((.+)\)", line)
+                    if mac_match:
+                        host["mac"] = mac_match.group(1).strip()
+                        host["vendor"] = mac_match.group(2).strip()
+                        break
     data = {
        'scanned_at': current_time(),
        'live_hosts': live_hosts
@@ -108,7 +142,9 @@ def quick_scan(subnet: str) -> List[str]:
 
     publish_mqtt(f"{MQTT_TOPIC_PREFIX}/hosts/live", data)
     log(f"Quick scan of {subnet} found {len(live_hosts)} active hosts.")
-    return live_hosts
+
+    live_hosts_ips = [host["ip"] for host in live_hosts if "ip" in host]
+    return live_hosts_ips
 
 
 def current_time() -> int:

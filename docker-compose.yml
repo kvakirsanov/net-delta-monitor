@@ -23,10 +23,9 @@ services:
       # Optional Telegram Bot settings
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-    networks:
-      - default
-    restart: always
 
-networks:
-  default:
-    driver: bridge
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    restart: always
