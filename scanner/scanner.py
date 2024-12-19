@@ -91,7 +91,7 @@ def quick_scan(subnet: str) -> List[Dict[str, str]]:
     Returns:
         List[Dict[str, str]]: List of active hosts with their IP, MAC addresses, and vendors.
     """
-    command = ["nmap", "-sn", subnet]
+    command = ["nmap", "-T4", "-sn", subnet]
     result = run_command(command)
 
     live_hosts = []
@@ -137,6 +137,7 @@ def quick_scan(subnet: str) -> List[Dict[str, str]]:
                         break
     data = {
        'scanned_at': current_time(),
+       'count': len(live_hosts),
        'live_hosts': live_hosts
     }
 
@@ -172,7 +173,7 @@ def full_scan(live_hosts: List[str], output_dir: str) -> List[Dict[str, Any]]:
         publish_mqtt(f"{MQTT_TOPIC_PREFIX}/scan/start_host", {"ip": ip, "started_at": started_at})
 
         output_base = os.path.join(output_dir, ip)
-        command = ["nmap", "-sV", "-p", ports, "-T4", "--open", "-oA", output_base, ip]
+        command = ["nmap", "-sV", "-p", ports, "-T3", "--open", "-oA", output_base, ip]
         run_command(command)
 
         json_results = nmap_xml_to_json(f"{output_base}.xml")
@@ -282,10 +283,13 @@ def load_previous_results(base_dir: str) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: Previous scan results.
     """
-    latest_path = os.path.join(base_dir, "latest", NETWORK_STATE_FILENAME)
-    if os.path.exists(latest_path):
-        with open(latest_path, "r") as f:
-            return json.load(f)
+    try:
+      latest_path = os.path.join(base_dir, "latest", NETWORK_STATE_FILENAME)
+      if os.path.exists(latest_path):
+          with open(latest_path, "r") as f:
+              return json.load(f)
+    except:
+      pass
     return []
 
 
